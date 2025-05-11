@@ -29,8 +29,9 @@ const Popup = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       const activeTab = tabs[0];
       if (activeTab?.id) {
+        const tabId = activeTab.id;
         // コンテンツスクリプトが読み込まれているか確認
-        chrome.tabs.sendMessage(activeTab.id, { action: 'PING' }, response => {
+        chrome.tabs.sendMessage(tabId, { action: 'PING' }, response => {
           if (chrome.runtime.lastError) {
             // コンテンツスクリプトが読み込まれていない場合
             console.error('Content script not loaded:', chrome.runtime.lastError);
@@ -40,7 +41,7 @@ const Popup = () => {
           }
 
           // コンテンツスクリプトが読み込まれている場合、ACUsの値を取得
-          chrome.tabs.sendMessage(activeTab.id, { action: 'FETCH_ACUS_VALUES' }, response => {
+          chrome.tabs.sendMessage(tabId, { action: 'FETCH_ACUS_VALUES' }, response => {
             if (chrome.runtime.lastError) {
               console.error('Error fetching ACUs values:', chrome.runtime.lastError);
               setIsUpdating(false);
@@ -49,9 +50,19 @@ const Popup = () => {
             }
 
             if (response?.acusValues) {
-              console.log('response', response.acusValues);
               setAcusValues(response.acusValues);
-              showToast('ACUs values updated successfully', 'success');
+              // 値が取得できなかった場合（両方とも0の場合）は失敗として通知
+              if (
+                (!response.acusValues.totalUsage || response.acusValues.totalUsage === '0') &&
+                (!response.acusValues.availableACUs || response.acusValues.availableACUs === '0')
+              ) {
+                showToast('Failed to fetch ACUs values. Please try again.', 'error');
+              } else {
+                showToast(
+                  `ACUs values updated successfully\nTotal Usage: ${response.acusValues.totalUsage || '0'} ACUs\nAvailable: ${response.acusValues.availableACUs || '0'} ACUs`,
+                  'success',
+                );
+              }
             } else {
               showToast('Failed to update ACUs values', 'error');
             }
@@ -146,28 +157,24 @@ const Popup = () => {
         {/* ACUsの値を表示 */}
         <div className="mt-4 space-y-4">
           {/* Total Usage */}
-          {acusValues.totalUsage && (
-            <div className="p-4 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#252525]">
-              <div className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">
-                Total Usage in this Cycle
-              </div>
-              <div className="text-3xl font-semibold text-neutral-900 dark:text-white">
-                <span className="font-mono">{acusValues.totalUsage}</span>
-                <span className="text-lg font-normal text-neutral-600 dark:text-neutral-400"> ACUs</span>
-              </div>
+          <div className="p-4 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#252525]">
+            <div className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">
+              Total Usage in this Cycle
             </div>
-          )}
+            <div className="text-3xl font-semibold text-neutral-900 dark:text-white">
+              <span className="font-mono">{acusValues.totalUsage || '0'}</span>
+              <span className="text-lg font-normal text-neutral-600 dark:text-neutral-400"> ACUs</span>
+            </div>
+          </div>
 
           {/* Available ACUs */}
-          {acusValues.availableACUs && (
-            <div className="p-4 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#252525]">
-              <div className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">Available ACUs</div>
-              <div className="text-3xl font-semibold text-neutral-900 dark:text-white">
-                <span className="font-mono">{acusValues.availableACUs}</span>
-                <span className="text-lg font-normal text-neutral-600 dark:text-neutral-400"> ACUs</span>
-              </div>
+          <div className="p-4 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#252525]">
+            <div className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">Available ACUs</div>
+            <div className="text-3xl font-semibold text-neutral-900 dark:text-white">
+              <span className="font-mono">{acusValues.availableACUs || '0'}</span>
+              <span className="text-lg font-normal text-neutral-600 dark:text-neutral-400"> ACUs</span>
             </div>
-          )}
+          </div>
 
           {/* 最終更新時刻 */}
           {acusValues.lastUpdated && (
