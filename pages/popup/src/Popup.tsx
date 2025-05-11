@@ -17,7 +17,6 @@ const Popup = () => {
     availableACUs: null,
   });
   const isLight = theme === 'light';
-  const logo = isLight ? 'popup/logo_vertical.svg' : 'popup/logo_vertical_dark.svg';
   const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,14 +42,10 @@ const Popup = () => {
     };
   }, []);
 
-  const goToDevin = () => chrome.tabs.create({ url: 'https://app.devin.ai/settings/usage' });
-
   return (
     <div ref={popupRef} className={`App ${isLight ? 'bg-slate-50' : 'bg-gray-800'}`}>
       <header className={`App-header ${isLight ? 'text-gray-900' : 'text-gray-100'}`}>
-        <button type="button" onClick={goToDevin} className="mb-4">
-          <img src={chrome.runtime.getURL(logo)} className="App-logo" alt="ACU Tracker" />
-        </button>
+        <h1 className="text-xl font-bold mb-4">ACU Tracker for Devin</h1>
 
         {/* ACUsの値を表示 */}
         <div className="mt-4 space-y-4">
