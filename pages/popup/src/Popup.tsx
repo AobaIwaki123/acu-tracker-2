@@ -3,60 +3,212 @@ import { useStorage, withErrorBoundary, withSuspense } from '@extension/shared';
 import { exampleThemeStorage } from '@extension/storage';
 import { t } from '@extension/i18n';
 import { ToggleButton } from '@extension/ui';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
-const notificationOptions = {
-  type: 'basic',
-  iconUrl: chrome.runtime.getURL('icon-34.png'),
-  title: 'Injecting content script error',
-  message: 'You cannot inject script here!',
-} as const;
+interface ACUsValues {
+  totalUsage: string | null;
+  availableACUs: string | null;
+  lastUpdated?: string;
+}
 
 const Popup = () => {
   const theme = useStorage(exampleThemeStorage);
+  const [acusValues, setAcusValues] = useState<ACUsValues>({
+    totalUsage: null,
+    availableACUs: null,
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const isLight = theme === 'light';
-  const logo = isLight ? 'popup/logo_vertical.svg' : 'popup/logo_vertical_dark.svg';
-  const goGithubSite = () =>
-    chrome.tabs.create({ url: 'https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite' });
+  const popupRef = useRef<HTMLDivElement>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
 
-  const injectContentScript = async () => {
-    const [tab] = await chrome.tabs.query({ currentWindow: true, active: true });
+  const fetchACUsValues = () => {
+    setIsUpdating(true);
+    // アクティブなタブを取得
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      const activeTab = tabs[0];
+      if (activeTab?.id) {
+        const tabId = activeTab.id;
+        // コンテンツスクリプトが読み込まれているか確認
+        chrome.tabs.sendMessage(tabId, { action: 'PING' }, response => {
+          if (chrome.runtime.lastError) {
+            // コンテンツスクリプトが読み込まれていない場合
+            console.error('Content script not loaded:', chrome.runtime.lastError);
+            setIsUpdating(false);
+            showToast('Please navigate to app.devin.ai', 'error');
+            return;
+          }
 
-    if (tab.url!.startsWith('about:') || tab.url!.startsWith('chrome:')) {
-      chrome.notifications.create('inject-error', notificationOptions);
+          // コンテンツスクリプトが読み込まれている場合、ACUsの値を取得
+          chrome.tabs.sendMessage(tabId, { action: 'FETCH_ACUS_VALUES' }, response => {
+            if (chrome.runtime.lastError) {
+              console.error('Error fetching ACUs values:', chrome.runtime.lastError);
+              setIsUpdating(false);
+              showToast('Failed to update ACUs values', 'error');
+              return;
+            }
+
+            if (response?.acusValues) {
+              setAcusValues(response.acusValues);
+              // 値が取得できなかった場合（両方とも0の場合）は失敗として通知
+              if (
+                (!response.acusValues.totalUsage || response.acusValues.totalUsage === '0') &&
+                (!response.acusValues.availableACUs || response.acusValues.availableACUs === '0')
+              ) {
+                showToast(
+                  `${response.success}: Failed to fetch ACUs values. Please try again. , ${response.acusValuestotalUsage} `,
+                  'error',
+                );
+              } else {
+                showToast(
+                  `ACUs values updated successfully\nTotal Usage: ${response.acusValues.totalUsage || '0'} ACUs\nAvailable: ${response.acusValues.availableACUs || '0'} ACUs`,
+                  'success',
+                );
+              }
+            } else {
+              showToast(`${response.success}: Failed to update ACUs values`, 'error');
+            }
+            setIsUpdating(false);
+          });
+        });
+      } else {
+        setIsUpdating(false);
+        showToast('Failed to update ACUs values', 'error');
+      }
+    });
+  };
+
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    // 既存のタイムアウトをクリア
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
     }
+    setToast({ message, type });
+    // 3秒後にトーストを非表示
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToast(null);
+    }, 3000);
+  }, []);
 
-    await chrome.scripting
-      .executeScript({
-        target: { tabId: tab.id! },
-        files: ['/content-runtime/index.iife.js'],
-      })
-      .catch(err => {
-        // Handling errors related to other paths
-        if (err.message.includes('Cannot access a chrome:// URL')) {
-          chrome.notifications.create('inject-error', notificationOptions);
-        }
+  useEffect(() => {
+    // 保存されたACUsの値を取得
+    chrome.storage.local.get(['totalUsage', 'availableACUs', 'lastUpdated'], result => {
+      setAcusValues({
+        totalUsage: result.totalUsage || null,
+        availableACUs: result.availableACUs || null,
+        lastUpdated: result.lastUpdated,
       });
+    });
+
+    // メッセージリスナーを設定
+    const messageListener = (message: { type: string; message: string; status?: 'success' | 'error' }) => {
+      if (message.type === 'notification') {
+        showToast(message.message, message.status || 'success');
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(messageListener);
+
+    // 外クリック対策
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        // Handle the click outside logic here (e.g., close the popup)
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      // コンポーネントのアンマウント時にタイムアウトをクリア
+      if (toastTimeoutRef.current) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
+      // メッセージリスナーを削除
+      chrome.runtime.onMessage.removeListener(messageListener);
+    };
+  }, [showToast]);
+
+  const formatLastUpdated = (dateString?: string) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleString();
   };
 
   return (
-    <div className={`App ${isLight ? 'bg-slate-50' : 'bg-gray-800'}`}>
+    <div ref={popupRef} className={`App ${isLight ? 'bg-slate-50' : 'bg-gray-800'}`}>
       <header className={`App-header ${isLight ? 'text-gray-900' : 'text-gray-100'}`}>
-        <button onClick={goGithubSite}>
-          <img src={chrome.runtime.getURL(logo)} className="App-logo" alt="logo" />
-        </button>
-        <p>
-          Edit <code>pages/popup/src/Popup.tsx</code>
-        </p>
-        <button
-          className={
-            'font-bold mt-4 py-1 px-4 rounded shadow hover:scale-105 ' +
-            (isLight ? 'bg-blue-200 text-black' : 'bg-gray-700 text-white')
-          }
-          onClick={injectContentScript}>
-          Click to inject Content Script
-        </button>
+        <div className="relative w-full mb-4">
+          <h1 className="text-xl font-bold text-center">ACU Tracker for Devin</h1>
+          <button
+            type="button"
+            onClick={fetchACUsValues}
+            disabled={isUpdating}
+            className={`absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full transition-all duration-300 ease-in-out
+              ${
+                isLight
+                  ? 'hover:bg-blue-100 text-blue-500 disabled:text-blue-300'
+                  : 'hover:bg-blue-900 text-blue-400 disabled:text-blue-600'
+              }`}
+            title="Update ACUs values">
+            <svg
+              className={`w-5 h-5 ${isUpdating ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </button>
+        </div>
+
+        {/* ACUsの値を表示 */}
+        <div className="mt-4 space-y-4">
+          {/* Total Usage */}
+          <div className="p-4 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#252525]">
+            <div className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">
+              Total Usage in this Cycle
+            </div>
+            <div className="text-3xl font-semibold text-neutral-900 dark:text-white">
+              <span className="font-mono">{acusValues.totalUsage || '0'}</span>
+              <span className="text-lg font-normal text-neutral-600 dark:text-neutral-400"> ACUs</span>
+            </div>
+          </div>
+
+          {/* Available ACUs */}
+          <div className="p-4 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#252525]">
+            <div className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">Available ACUs</div>
+            <div className="text-3xl font-semibold text-neutral-900 dark:text-white">
+              <span className="font-mono">{acusValues.availableACUs || '0'}</span>
+              <span className="text-lg font-normal text-neutral-600 dark:text-neutral-400"> ACUs</span>
+            </div>
+          </div>
+
+          {/* 最終更新時刻 */}
+          {acusValues.lastUpdated && (
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
+              Last updated: {formatLastUpdated(acusValues.lastUpdated)}
+            </div>
+          )}
+        </div>
+
         <ToggleButton>{t('toggleTheme')}</ToggleButton>
       </header>
+
+      {/* トースト通知 */}
+      {toast && (
+        <div
+          className={`fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg transition-all duration-300 ease-in-out
+            ${toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 };
