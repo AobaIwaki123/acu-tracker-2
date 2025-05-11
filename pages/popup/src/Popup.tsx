@@ -29,16 +29,34 @@ const Popup = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       const activeTab = tabs[0];
       if (activeTab?.id) {
-        // コンテンツスクリプトにメッセージを送信
-        chrome.tabs.sendMessage(activeTab.id, { action: 'FETCH_ACUS_VALUES' }, response => {
-          if (response?.acusValues) {
-            console.log('response', response.acusValues);
-            setAcusValues(response.acusValues);
-            showToast('ACUs values updated successfully', 'success');
-          } else {
-            showToast('Failed to update ACUs values', 'error');
+        // コンテンツスクリプトが読み込まれているか確認
+        chrome.tabs.sendMessage(activeTab.id, { action: 'PING' }, response => {
+          if (chrome.runtime.lastError) {
+            // コンテンツスクリプトが読み込まれていない場合
+            console.error('Content script not loaded:', chrome.runtime.lastError);
+            setIsUpdating(false);
+            showToast('Please navigate to app.devin.ai', 'error');
+            return;
           }
-          setIsUpdating(false);
+
+          // コンテンツスクリプトが読み込まれている場合、ACUsの値を取得
+          chrome.tabs.sendMessage(activeTab.id, { action: 'FETCH_ACUS_VALUES' }, response => {
+            if (chrome.runtime.lastError) {
+              console.error('Error fetching ACUs values:', chrome.runtime.lastError);
+              setIsUpdating(false);
+              showToast('Failed to update ACUs values', 'error');
+              return;
+            }
+
+            if (response?.acusValues) {
+              console.log('response', response.acusValues);
+              setAcusValues(response.acusValues);
+              showToast('ACUs values updated successfully', 'success');
+            } else {
+              showToast('Failed to update ACUs values', 'error');
+            }
+            setIsUpdating(false);
+          });
         });
       } else {
         setIsUpdating(false);
