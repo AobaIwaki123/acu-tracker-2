@@ -95,9 +95,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 window.addEventListener('load', () => {
   sampleFunction();
   // ページロード完了後、少し待ってから値を取得（DOMの構築を待つため）
-  setTimeout(() => {
+  setTimeout(async () => {
     if (window.location.hostname === 'app.devin.ai' && window.location.pathname === '/settings/usage') {
-      const { totalUsage, availableACUs } = getACUsValues();
+      const { totalUsage, availableACUs } = await getACUsValues();
       if (totalUsage || availableACUs) {
         chrome.storage.local.set({
           totalUsage,
