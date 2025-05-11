@@ -48,7 +48,16 @@ const handleUrlChange = () => {
   // app.devin.aiのドメインにアクセスしたときに実行
   if (window.location.hostname === 'app.devin.ai') {
     const { totalUsage, availableACUs } = getACUsValues();
+
+    // 値が取得できた場合のみ保存
     if (totalUsage || availableACUs) {
+      // 現在の値を保存
+      chrome.storage.local.set({
+        totalUsage,
+        availableACUs,
+        lastUpdated: new Date().toISOString(),
+      });
+
       // ACUsの値をバックグラウンドスクリプトに送信
       chrome.runtime.sendMessage({
         action: 'SHOW_POPUP',
@@ -56,6 +65,20 @@ const handleUrlChange = () => {
           totalUsage,
           availableACUs,
         },
+      });
+    } else {
+      // 値が取得できない場合は、保存されている値を取得して表示
+      chrome.storage.local.get(['totalUsage', 'availableACUs', 'lastUpdated'], result => {
+        if (result.totalUsage || result.availableACUs) {
+          chrome.runtime.sendMessage({
+            action: 'SHOW_POPUP',
+            acusValues: {
+              totalUsage: result.totalUsage,
+              availableACUs: result.availableACUs,
+              lastUpdated: result.lastUpdated,
+            },
+          });
+        }
       });
     }
   }

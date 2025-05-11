@@ -8,6 +8,7 @@ import { useEffect, useState, useRef } from 'react';
 interface ACUsValues {
   totalUsage: string | null;
   availableACUs: string | null;
+  lastUpdated?: string;
 }
 
 const Popup = () => {
@@ -21,10 +22,11 @@ const Popup = () => {
 
   useEffect(() => {
     // 保存されたACUsの値を取得
-    chrome.storage.local.get(['totalUsage', 'availableACUs'], result => {
+    chrome.storage.local.get(['totalUsage', 'availableACUs', 'lastUpdated'], result => {
       setAcusValues({
         totalUsage: result.totalUsage || null,
         availableACUs: result.availableACUs || null,
+        lastUpdated: result.lastUpdated,
       });
     });
 
@@ -41,6 +43,12 @@ const Popup = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  const formatLastUpdated = (dateString?: string) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
 
   return (
     <div ref={popupRef} className={`App ${isLight ? 'bg-slate-50' : 'bg-gray-800'}`}>
@@ -70,6 +78,13 @@ const Popup = () => {
                 <span className="font-mono">{acusValues.availableACUs}</span>
                 <span className="text-lg font-normal text-neutral-600 dark:text-neutral-400"> ACUs</span>
               </div>
+            </div>
+          )}
+
+          {/* 最終更新時刻 */}
+          {acusValues.lastUpdated && (
+            <div className="text-xs text-neutral-500 dark:text-neutral-400 text-center">
+              Last updated: {formatLastUpdated(acusValues.lastUpdated)}
             </div>
           )}
         </div>
