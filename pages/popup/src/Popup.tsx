@@ -90,8 +90,7 @@ const Popup = () => {
     // 外クリック対策
     const handleClickOutside = (event: MouseEvent) => {
       if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
-        event.preventDefault();
-        event.stopPropagation();
+        // Handle the click outside logic here (e.g., close the popup)
       }
     };
 
