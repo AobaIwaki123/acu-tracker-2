@@ -12,18 +12,27 @@ const notificationOptions = {
   message: 'You cannot inject script here!',
 } as const;
 
+interface ACUsValues {
+  totalUsage: string | null;
+  availableACUs: string | null;
+}
+
 const Popup = () => {
   const theme = useStorage(exampleThemeStorage);
-  const [acusValue, setAcusValue] = useState<string | null>(null);
+  const [acusValues, setAcusValues] = useState<ACUsValues>({
+    totalUsage: null,
+    availableACUs: null,
+  });
   const isLight = theme === 'light';
   const logo = isLight ? 'popup/logo_vertical.svg' : 'popup/logo_vertical_dark.svg';
 
   useEffect(() => {
     // 保存されたACUsの値を取得
-    chrome.storage.local.get(['acusValue'], result => {
-      if (result.acusValue) {
-        setAcusValue(result.acusValue);
-      }
+    chrome.storage.local.get(['totalUsage', 'availableACUs'], result => {
+      setAcusValues({
+        totalUsage: result.totalUsage || null,
+        availableACUs: result.availableACUs || null,
+      });
     });
   }, []);
 
@@ -58,15 +67,31 @@ const Popup = () => {
         </button>
 
         {/* ACUsの値を表示 */}
-        {acusValue && (
-          <div className="mt-4 p-4 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#252525]">
-            <div className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">Current ACUs Usage</div>
-            <div className="text-3xl font-semibold text-neutral-900 dark:text-white">
-              <span className="font-mono">{acusValue}</span>
-              <span className="text-lg font-normal text-neutral-600 dark:text-neutral-400"> ACUs</span>
+        <div className="mt-4 space-y-4">
+          {/* Total Usage */}
+          {acusValues.totalUsage && (
+            <div className="p-4 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#252525]">
+              <div className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                Total Usage in this Cycle
+              </div>
+              <div className="text-3xl font-semibold text-neutral-900 dark:text-white">
+                <span className="font-mono">{acusValues.totalUsage}</span>
+                <span className="text-lg font-normal text-neutral-600 dark:text-neutral-400"> ACUs</span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Available ACUs */}
+          {acusValues.availableACUs && (
+            <div className="p-4 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#252525]">
+              <div className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">Available ACUs</div>
+              <div className="text-3xl font-semibold text-neutral-900 dark:text-white">
+                <span className="font-mono">{acusValues.availableACUs}</span>
+                <span className="text-lg font-normal text-neutral-600 dark:text-neutral-400"> ACUs</span>
+              </div>
+            </div>
+          )}
+        </div>
 
         <button
           className={

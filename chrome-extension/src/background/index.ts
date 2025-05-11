@@ -12,8 +12,11 @@ console.log("Edit 'chrome-extension/src/background/index.ts' and save to reload.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'SHOW_POPUP') {
     // ACUsの値を保存
-    if (message.acusValue) {
-      chrome.storage.local.set({ acusValue: message.acusValue });
+    if (message.acusValues) {
+      chrome.storage.local.set({
+        totalUsage: message.acusValues.totalUsage,
+        availableACUs: message.acusValues.availableACUs,
+      });
     }
 
     // アクティブなタブを取得

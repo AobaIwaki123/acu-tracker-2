@@ -3,20 +3,28 @@ import { sampleFunction } from './sampleFunction';
 console.log('content script loaded');
 
 // ACUsの値を取得する関数
-const getACUsValue = (): string | null => {
-  const acuElement = document.querySelector('.text-3xl.font-semibold .font-mono');
-  return acuElement ? acuElement.textContent : null;
+const getACUsValues = () => {
+  const totalUsageElement = document.querySelector('.text-3xl.font-semibold .font-mono');
+  const availableACUsElement = document.querySelector('.text-3xl.font-semibold .font-mono');
+
+  return {
+    totalUsage: totalUsageElement ? totalUsageElement.textContent : null,
+    availableACUs: availableACUsElement ? availableACUsElement.textContent : null,
+  };
 };
 
 // URLが変更されたときのイベントリスナー
 const handleUrlChange = () => {
   if (window.location.href.includes('app.devin.ai/settings/usage')) {
-    const acusValue = getACUsValue();
-    if (acusValue) {
+    const { totalUsage, availableACUs } = getACUsValues();
+    if (totalUsage || availableACUs) {
       // ACUsの値をバックグラウンドスクリプトに送信
       chrome.runtime.sendMessage({
         action: 'SHOW_POPUP',
-        acusValue: acusValue,
+        acusValues: {
+          totalUsage,
+          availableACUs,
+        },
       });
     }
   }
