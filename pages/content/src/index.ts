@@ -84,6 +84,36 @@ const handleACUsValues = () => {
   }
 };
 
+// メッセージリスナーを設定
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'FETCH_ACUS_VALUES') {
+    const { totalUsage, availableACUs } = getACUsValues();
+    if (totalUsage || availableACUs) {
+      const acusValues = {
+        totalUsage,
+        availableACUs,
+        lastUpdated: new Date().toISOString(),
+      };
+      // 値を保存
+      chrome.storage.local.set(acusValues);
+      // レスポンスを送信
+      sendResponse({ acusValues });
+    } else {
+      // 値が取得できない場合は保存されている値を返す
+      chrome.storage.local.get(['totalUsage', 'availableACUs', 'lastUpdated'], result => {
+        sendResponse({
+          acusValues: {
+            totalUsage: result.totalUsage,
+            availableACUs: result.availableACUs,
+            lastUpdated: result.lastUpdated,
+          },
+        });
+      });
+    }
+    return true; // 非同期レスポンスを示す
+  }
+});
+
 // ページロード時の処理
 window.addEventListener('load', () => {
   sampleFunction();

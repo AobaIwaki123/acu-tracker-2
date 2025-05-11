@@ -17,8 +17,28 @@ const Popup = () => {
     totalUsage: null,
     availableACUs: null,
   });
+  const [isUpdating, setIsUpdating] = useState(false);
   const isLight = theme === 'light';
   const popupRef = useRef<HTMLDivElement>(null);
+
+  const fetchACUsValues = () => {
+    setIsUpdating(true);
+    // アクティブなタブを取得
+    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+      const activeTab = tabs[0];
+      if (activeTab?.id) {
+        // コンテンツスクリプトにメッセージを送信
+        chrome.tabs.sendMessage(activeTab.id, { action: 'FETCH_ACUS_VALUES' }, response => {
+          if (response?.acusValues) {
+            setAcusValues(response.acusValues);
+          }
+          setIsUpdating(false);
+        });
+      } else {
+        setIsUpdating(false);
+      }
+    });
+  };
 
   useEffect(() => {
     // 保存されたACUsの値を取得
@@ -53,7 +73,35 @@ const Popup = () => {
   return (
     <div ref={popupRef} className={`App ${isLight ? 'bg-slate-50' : 'bg-gray-800'}`}>
       <header className={`App-header ${isLight ? 'text-gray-900' : 'text-gray-100'}`}>
-        <h1 className="text-xl font-bold mb-4">ACU Tracker for Devin</h1>
+        <div className="relative w-full mb-4">
+          <h1 className="text-xl font-bold text-center">ACU Tracker for Devin</h1>
+          <button
+            type="button"
+            onClick={fetchACUsValues}
+            disabled={isUpdating}
+            className={`absolute right-0 top-1/2 -translate-y-1/2 p-2 rounded-full transition-all duration-300 ease-in-out
+              ${
+                isLight
+                  ? 'hover:bg-blue-100 text-blue-500 disabled:text-blue-300'
+                  : 'hover:bg-blue-900 text-blue-400 disabled:text-blue-600'
+              }`}
+            title="Update ACUs values">
+            <svg
+              className={`w-5 h-5 ${isUpdating ? 'animate-spin' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </button>
+        </div>
 
         {/* ACUsの値を表示 */}
         <div className="mt-4 space-y-4">
