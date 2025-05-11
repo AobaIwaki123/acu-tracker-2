@@ -7,7 +7,7 @@ DevinのACU使用状況を表示するChrome拡張機能
 ## Core
 
 - UIの表示/非表示を切り替えられる
-- Content Scriptで、`Usage & Limits`ページを定期的にポーリングして、ACU使用状況を取得する
+- 何らかの手法で、`Usage & Limits`ページを定期的にポーリングして、ACU使用状況を取得する
 
 ## Extra
 
