@@ -45,7 +45,8 @@ const getACUsValues = () => {
 
 // URLが変更されたときのイベントリスナー
 const handleUrlChange = () => {
-  if (window.location.href.includes('app.devin.ai/settings/usage')) {
+  // app.devin.aiのドメインにアクセスしたときに実行
+  if (window.location.hostname === 'app.devin.ai') {
     const { totalUsage, availableACUs } = getACUsValues();
     if (totalUsage || availableACUs) {
       // ACUsの値をバックグラウンドスクリプトに送信
