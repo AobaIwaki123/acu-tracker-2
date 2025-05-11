@@ -11,6 +11,11 @@ console.log("Edit 'chrome-extension/src/background/index.ts' and save to reload.
 // メッセージリスナーを設定
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'SHOW_POPUP') {
+    // ACUsの値を保存
+    if (message.acusValue) {
+      chrome.storage.local.set({ acusValue: message.acusValue });
+    }
+
     // アクティブなタブを取得
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       if (tabs[0]) {

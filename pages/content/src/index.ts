@@ -2,11 +2,23 @@ import { sampleFunction } from './sampleFunction';
 
 console.log('content script loaded');
 
+// ACUsの値を取得する関数
+const getACUsValue = (): string | null => {
+  const acuElement = document.querySelector('.text-3xl.font-semibold .font-mono');
+  return acuElement ? acuElement.textContent : null;
+};
+
 // URLが変更されたときのイベントリスナー
 const handleUrlChange = () => {
-  if (window.location.href.includes('app.devin.ai')) {
-    // 拡張機能のポップアップを表示
-    chrome.runtime.sendMessage({ action: 'SHOW_POPUP' });
+  if (window.location.href.includes('app.devin.ai/settings/usage')) {
+    const acusValue = getACUsValue();
+    if (acusValue) {
+      // ACUsの値をバックグラウンドスクリプトに送信
+      chrome.runtime.sendMessage({
+        action: 'SHOW_POPUP',
+        acusValue: acusValue,
+      });
+    }
   }
 };
 

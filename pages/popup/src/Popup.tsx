@@ -3,6 +3,7 @@ import { useStorage, withErrorBoundary, withSuspense } from '@extension/shared';
 import { exampleThemeStorage } from '@extension/storage';
 import { t } from '@extension/i18n';
 import { ToggleButton } from '@extension/ui';
+import { useEffect, useState } from 'react';
 
 const notificationOptions = {
   type: 'basic',
@@ -13,8 +14,19 @@ const notificationOptions = {
 
 const Popup = () => {
   const theme = useStorage(exampleThemeStorage);
+  const [acusValue, setAcusValue] = useState<string | null>(null);
   const isLight = theme === 'light';
   const logo = isLight ? 'popup/logo_vertical.svg' : 'popup/logo_vertical_dark.svg';
+
+  useEffect(() => {
+    // 保存されたACUsの値を取得
+    chrome.storage.local.get(['acusValue'], result => {
+      if (result.acusValue) {
+        setAcusValue(result.acusValue);
+      }
+    });
+  }, []);
+
   const goGithubSite = () =>
     chrome.tabs.create({ url: 'https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite' });
 
@@ -44,9 +56,18 @@ const Popup = () => {
         <button onClick={goGithubSite}>
           <img src={chrome.runtime.getURL(logo)} className="App-logo" alt="logo" />
         </button>
-        <p>
-          Edit <code>pages/popup/src/Popup.tsx</code>
-        </p>
+
+        {/* ACUsの値を表示 */}
+        {acusValue && (
+          <div className="mt-4 p-4 rounded-lg border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-[#252525]">
+            <div className="mb-2 text-sm font-medium text-neutral-600 dark:text-neutral-400">Current ACUs Usage</div>
+            <div className="text-3xl font-semibold text-neutral-900 dark:text-white">
+              <span className="font-mono">{acusValue}</span>
+              <span className="text-lg font-normal text-neutral-600 dark:text-neutral-400"> ACUs</span>
+            </div>
+          </div>
+        )}
+
         <button
           className={
             'font-bold mt-4 py-1 px-4 rounded shadow hover:scale-105 ' +
