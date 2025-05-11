@@ -43,8 +43,8 @@ const getACUsValues = () => {
   };
 };
 
-// URLが変更されたときのイベントリスナー
-const handleUrlChange = () => {
+// ACUsの値を取得して表示する関数
+const handleACUsValues = () => {
   // app.devin.aiのドメインにアクセスしたときに実行
   if (window.location.hostname === 'app.devin.ai') {
     const { totalUsage, availableACUs } = getACUsValues();
@@ -84,35 +84,9 @@ const handleUrlChange = () => {
   }
 };
 
-// 初期チェック
-handleUrlChange();
-
-// URL変更を監視
-const observer = new MutationObserver(() => {
-  handleUrlChange();
-});
-
-// bodyの変更を監視
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-});
-
-// 履歴APIの変更を監視
-const originalPushState = history.pushState;
-history.pushState = function (...args: Parameters<typeof history.pushState>) {
-  originalPushState.apply(this, args);
-  handleUrlChange();
-};
-
-const originalReplaceState = history.replaceState;
-history.replaceState = function (...args: Parameters<typeof history.replaceState>) {
-  originalReplaceState.apply(this, args);
-  handleUrlChange();
-};
-
 // ページロード時の処理
 window.addEventListener('load', () => {
   sampleFunction();
-  handleUrlChange();
+  // ページロード完了後、少し待ってから値を取得（DOMの構築を待つため）
+  setTimeout(handleACUsValues, 1000);
 });
