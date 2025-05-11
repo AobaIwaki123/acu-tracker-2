@@ -3,7 +3,7 @@ import { useStorage, withErrorBoundary, withSuspense } from '@extension/shared';
 import { exampleThemeStorage } from '@extension/storage';
 import { t } from '@extension/i18n';
 import { ToggleButton } from '@extension/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface ACUsValues {
   totalUsage: string | null;
@@ -18,6 +18,7 @@ const Popup = () => {
   });
   const isLight = theme === 'light';
   const logo = isLight ? 'popup/logo_vertical.svg' : 'popup/logo_vertical_dark.svg';
+  const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // 保存されたACUsの値を取得
@@ -27,16 +28,28 @@ const Popup = () => {
         availableACUs: result.availableACUs || null,
       });
     });
+
+    // 外クリック対策
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
-  const goGithubSite = () =>
-    chrome.tabs.create({ url: 'https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite' });
+  const goToDevin = () => chrome.tabs.create({ url: 'https://app.devin.ai/settings/usage' });
 
   return (
-    <div className={`App ${isLight ? 'bg-slate-50' : 'bg-gray-800'}`}>
+    <div ref={popupRef} className={`App ${isLight ? 'bg-slate-50' : 'bg-gray-800'}`}>
       <header className={`App-header ${isLight ? 'text-gray-900' : 'text-gray-100'}`}>
-        <button type="button" onClick={goGithubSite}>
-          <img src={chrome.runtime.getURL(logo)} className="App-logo" alt="logo" />
+        <button type="button" onClick={goToDevin} className="mb-4">
+          <img src={chrome.runtime.getURL(logo)} className="App-logo" alt="ACU Tracker" />
         </button>
 
         {/* ACUsの値を表示 */}
