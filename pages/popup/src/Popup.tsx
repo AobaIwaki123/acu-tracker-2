@@ -3,7 +3,7 @@ import { useStorage, withErrorBoundary, withSuspense } from '@extension/shared';
 import { exampleThemeStorage } from '@extension/storage';
 import { t } from '@extension/i18n';
 import { ToggleButton } from '@extension/ui';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 interface ACUsValues {
   totalUsage: string | null;
@@ -56,7 +56,10 @@ const Popup = () => {
                 (!response.acusValues.totalUsage || response.acusValues.totalUsage === '0') &&
                 (!response.acusValues.availableACUs || response.acusValues.availableACUs === '0')
               ) {
-                showToast('Failed to fetch ACUs values. Please try again.', 'error');
+                showToast(
+                  `${response.success}: Failed to fetch ACUs values. Please try again. , ${response.acusValuestotalUsage} `,
+                  'error',
+                );
               } else {
                 showToast(
                   `ACUs values updated successfully\nTotal Usage: ${response.acusValues.totalUsage || '0'} ACUs\nAvailable: ${response.acusValues.availableACUs || '0'} ACUs`,
@@ -64,7 +67,7 @@ const Popup = () => {
                 );
               }
             } else {
-              showToast('Failed to update ACUs values', 'error');
+              showToast(`${response.success}: Failed to update ACUs values`, 'error');
             }
             setIsUpdating(false);
           });
@@ -76,7 +79,7 @@ const Popup = () => {
     });
   };
 
-  const showToast = (message: string, type: 'success' | 'error') => {
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
     // 既存のタイムアウトをクリア
     if (toastTimeoutRef.current) {
       window.clearTimeout(toastTimeoutRef.current);
@@ -86,7 +89,7 @@ const Popup = () => {
     toastTimeoutRef.current = window.setTimeout(() => {
       setToast(null);
     }, 3000);
-  };
+  }, []);
 
   useEffect(() => {
     // 保存されたACUsの値を取得
@@ -97,6 +100,15 @@ const Popup = () => {
         lastUpdated: result.lastUpdated,
       });
     });
+
+    // メッセージリスナーを設定
+    const messageListener = (message: { type: string; message: string; status?: 'success' | 'error' }) => {
+      if (message.type === 'notification') {
+        showToast(message.message, message.status || 'success');
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(messageListener);
 
     // 外クリック対策
     const handleClickOutside = (event: MouseEvent) => {
@@ -112,8 +124,10 @@ const Popup = () => {
       if (toastTimeoutRef.current) {
         window.clearTimeout(toastTimeoutRef.current);
       }
+      // メッセージリスナーを削除
+      chrome.runtime.onMessage.removeListener(messageListener);
     };
-  }, []);
+  }, [showToast]);
 
   const formatLastUpdated = (dateString?: string) => {
     if (!dateString) return null;

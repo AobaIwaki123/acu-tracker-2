@@ -28,7 +28,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
   }
 
-  if (message.action === 'FETCH_ACUS_USAGE_PAGE') {
+  if (message.action === 'FETCH_ACUS_VALUES') {
     fetch('https://app.devin.ai/settings/usage', {
       credentials: 'include', // ログイン済みのCookieを使う
     })
