@@ -1,13 +1,13 @@
 {
-  "name": "chrome-extension-boilerplate-react-vite",
-  "version": "0.4.3",
-  "description": "chrome extension boilerplate",
+  "name": "acu-tracker-for-devin",
+  "version": "0.0.0",
+  "description": "ACU Tracker for Devin",
   "license": "MIT",
   "private": true,
   "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/Jonghakseo/chrome-extension-boilerplate-react-vite.git"
+    "url": "https://github.com/AobaIwaki123/acu-tracker-2.git"
   },
   "type": "module",
   "scripts": {
