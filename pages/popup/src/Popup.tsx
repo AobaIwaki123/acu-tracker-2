@@ -18,8 +18,10 @@ const Popup = () => {
     availableACUs: null,
   });
   const [isUpdating, setIsUpdating] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const isLight = theme === 'light';
   const popupRef = useRef<HTMLDivElement>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
 
   const fetchACUsValues = () => {
     setIsUpdating(true);
@@ -30,14 +32,31 @@ const Popup = () => {
         // コンテンツスクリプトにメッセージを送信
         chrome.tabs.sendMessage(activeTab.id, { action: 'FETCH_ACUS_VALUES' }, response => {
           if (response?.acusValues) {
+            console.log('response', response.acusValues);
             setAcusValues(response.acusValues);
+            showToast('ACUs values updated successfully', 'success');
+          } else {
+            showToast('Failed to update ACUs values', 'error');
           }
           setIsUpdating(false);
         });
       } else {
         setIsUpdating(false);
+        showToast('Failed to update ACUs values', 'error');
       }
     });
+  };
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    // 既存のタイムアウトをクリア
+    if (toastTimeoutRef.current) {
+      window.clearTimeout(toastTimeoutRef.current);
+    }
+    setToast({ message, type });
+    // 3秒後にトーストを非表示
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToast(null);
+    }, 3000);
   };
 
   useEffect(() => {
@@ -61,6 +80,10 @@ const Popup = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      // コンポーネントのアンマウント時にタイムアウトをクリア
+      if (toastTimeoutRef.current) {
+        window.clearTimeout(toastTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -139,6 +162,15 @@ const Popup = () => {
 
         <ToggleButton>{t('toggleTheme')}</ToggleButton>
       </header>
+
+      {/* トースト通知 */}
+      {toast && (
+        <div
+          className={`fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg transition-all duration-300 ease-in-out
+            ${toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 };
